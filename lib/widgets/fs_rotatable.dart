@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 
-class FsRotatableController extends GetxController {
-  RxInt quarterTurns = 0.obs;
+class FsRotatableController {
+  ValueNotifier<int> turns = ValueNotifier<int>(0);
 
   void rotate() {
-    quarterTurns.value = (quarterTurns.value + 1) % 4;
+    turns.value = (turns.value + 1) % 4;
   }
 }
 
@@ -29,7 +28,7 @@ class _FsRotatableState extends State<FsRotatable> {
   @override
   void initState() {
     super.initState();
-    controller = Get.put(widget.controller ?? FsRotatableController());
+    controller = widget.controller ?? FsRotatableController();
   }
 
   @override
@@ -37,11 +36,14 @@ class _FsRotatableState extends State<FsRotatable> {
     return Center(
       child: AspectRatio(
         aspectRatio: 16 / 9, // 默认宽高比
-        child: Obx(
-          () => RotatedBox(
-            quarterTurns: controller.quarterTurns.value,
-            child: widget.child,
-          ),
+        child: ValueListenableBuilder(
+          valueListenable: controller.turns,
+          builder: (BuildContext context, value, Widget? child) {
+            return RotatedBox(
+              quarterTurns: value,
+              child: widget.child,
+            );
+          },
         ),
       ),
     );

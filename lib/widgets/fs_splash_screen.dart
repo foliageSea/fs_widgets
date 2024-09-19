@@ -2,12 +2,11 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-class FsSplashScreenController extends GetxController {
-  RxString text = "加载中".obs;
+class FsSplashScreenController {
+  ValueNotifier<String> text = ValueNotifier<String>('加载中');
 
   void setText(String t) {
     text.value = t;
-    text.refresh();
   }
 }
 
@@ -36,7 +35,7 @@ class _FsSplashScreenState extends State<FsSplashScreen> {
   @override
   void initState() {
     super.initState();
-    controller = Get.put(widget.controller ?? FsSplashScreenController());
+    controller = widget.controller ?? FsSplashScreenController();
   }
 
   @override
@@ -64,7 +63,13 @@ class _FsSplashScreenState extends State<FsSplashScreen> {
                   const SizedBox(
                     height: 8,
                   ),
-                  Obx(() => Text(controller.text.value)),
+                  ValueListenableBuilder(
+                    valueListenable: controller.text,
+                    builder:
+                        (BuildContext context, String value, Widget? child) {
+                      return Text(controller.text.value);
+                    },
+                  )
                 ],
               ),
             ),
