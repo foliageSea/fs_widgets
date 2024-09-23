@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fs_widgets/widgets/fs_raw_keyboard_listener.dart';
 import 'package:fs_widgets/widgets/stepper/fs_stepper.dart';
 
 void main() {
@@ -40,39 +41,14 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final List<Item> items = [
-    Item('Item 1'),
-    Item('Item 2'),
-    Item('Item 3'),
-  ];
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: ListView.builder(
-          itemCount: items.length,
-          itemBuilder: (BuildContext context, int index) {
-            final Item item = items[index];
-
-            return Dismissible(
-              key: Key(item.name.value),
-              onDismissed: (DismissDirection direction) {
-                setState(() {
-                  items.removeAt(index);
-                });
-              },
-              child: ListTile(
-                title: ValueListenableBuilder<String>(
-                  valueListenable: item.name,
-                  builder: (BuildContext context, String value, child) {
-                    return Text(value);
-                  },
-                ),
-              ),
-            );
-          },
-        ),
+      appBar: AppBar(
+        title: const Text('HomePage'),
+      ),
+      body: const Center(
+        child: Text('测试'),
       ),
     );
   }
