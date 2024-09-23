@@ -1,6 +1,5 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 
 class FsSplashScreenController {
   ValueNotifier<String> text = ValueNotifier<String>('加载中');
