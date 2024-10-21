@@ -116,9 +116,8 @@ class _FsVideoPlayerState extends State<FsVideoPlayer> {
         children: <Widget>[
           VideoPlayer(_controller),
           if (showControls)
-            _ControlsOverlay(
+            VideoPlayerControlsOverlay(
               controller: _controller,
-              onClick: widget.onClick,
             ),
         ],
       ),
@@ -149,98 +148,187 @@ class _FsVideoPlayerState extends State<FsVideoPlayer> {
   }
 }
 
-class _ControlsOverlay extends StatelessWidget {
-  final Function? onClick;
+class VideoPlayerControlsOverlay extends StatefulWidget {
   final VideoPlayerController controller;
 
-  const _ControlsOverlay({required this.controller, this.onClick});
+  const VideoPlayerControlsOverlay({super.key, required this.controller});
+
+  @override
+  State<VideoPlayerControlsOverlay> createState() =>
+      _VideoPlayerControlsOverlayState();
+}
+
+class _VideoPlayerControlsOverlayState
+    extends State<VideoPlayerControlsOverlay> {
+  static const List<Duration> seekOffsets = <Duration>[
+    Duration(seconds: -15),
+    Duration(seconds: -10),
+    Duration(seconds: -5),
+    Duration.zero,
+    Duration(seconds: 5),
+    Duration(seconds: 10),
+    Duration(seconds: 15),
+  ];
+  static const List<double> playbackRates = <double>[
+    1.0,
+    2.0,
+  ];
+
+  bool showControls = false;
 
   @override
   Widget build(BuildContext context) {
-    const double iconSize = 30;
+    var controller = widget.controller;
 
     return LayoutBuilder(
-      builder: (context, constraints) {
-        return Container(
-          width: constraints.maxWidth * 0.8,
-          height: 95,
-          margin: const EdgeInsets.only(bottom: 16),
-          padding: const EdgeInsets.all(16.0),
-          decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.5),
-            borderRadius: const BorderRadius.all(Radius.circular(8.0)),
-          ),
-          child: Column(
-            children: <Widget>[
-              VideoProgressIndicator(controller, allowScrubbing: true),
-              const SizedBox(
-                height: 4,
+      builder: (BuildContext context, BoxConstraints constraints) {
+        var maxWidth = constraints.maxWidth;
+        return Stack(
+          alignment: Alignment.center,
+          children: <Widget>[
+            Center(
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    showControls = !showControls;
+                  });
+                },
+                onDoubleTap: () {},
               ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  IconButton(
-                    onPressed: () {
-                      if (controller.value.position.inSeconds > 5) {
-                        controller.seekTo(Duration(
-                            seconds: controller.value.position.inSeconds - 5));
-                      } else {
-                        controller.seekTo(const Duration(seconds: 0));
-                      }
-                    },
-                    icon: const Icon(
-                      Icons.replay_5,
-                      color: Colors.white,
-                      size: iconSize,
+            ),
+            showControls
+                ? Positioned(
+                    bottom: 0,
+                    child: Container(
+                      width: maxWidth * 0.9,
+                      height: 100,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(8.0),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.5),
+                        borderRadius:
+                            const BorderRadius.all(Radius.circular(8.0)),
+                      ),
+                      child: _buildControls(context, controller),
                     ),
-                  ),
-                  const SizedBox(
-                    width: 8,
-                  ),
-                  IconButton(
-                    onPressed: () {
-                      controller.value.isPlaying
-                          ? controller.pause()
-                          : controller.play();
-                    },
-                    icon: controller.value.isPlaying
-                        ? const Center(
-                            child: Icon(
-                              Icons.pause,
-                              color: Colors.white,
-                              semanticLabel: 'Play',
-                              size: iconSize,
-                            ),
-                          )
-                        : const Center(
-                            child: Icon(
-                              Icons.play_arrow,
-                              color: Colors.white,
-                              semanticLabel: 'Play',
-                              size: iconSize,
-                            ),
-                          ),
-                  ),
-                  const SizedBox(
-                    width: 8,
-                  ),
-                  IconButton(
-                    onPressed: () {
-                      controller.seekTo(Duration(
-                          seconds: controller.value.position.inSeconds + 5));
-                    },
-                    icon: const Icon(
-                      Icons.forward_5,
-                      color: Colors.white,
-                      size: iconSize,
-                    ),
-                  ),
-                ],
-              )
-            ],
-          ),
+                  )
+                : Container(),
+          ],
         );
       },
+    );
+  }
+
+  Column _buildControls(
+      BuildContext context, VideoPlayerController controller) {
+    return Column(
+      children: [
+        SizedBox(
+            height: 25,
+            child: VideoProgressIndicator(widget.controller,
+                allowScrubbing: true)),
+        const SizedBox(
+          height: 8,
+        ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            IconButton(
+              icon: widget.controller.value.isPlaying
+                  ? const Icon(
+                      Icons.pause,
+                      color: Colors.white,
+                      semanticLabel: 'Pause',
+                    )
+                  : const Icon(
+                      Icons.play_arrow,
+                      color: Colors.white,
+                      semanticLabel: 'Play',
+                    ),
+              onPressed: () {
+                widget.controller.value.isPlaying
+                    ? widget.controller.pause()
+                    : widget.controller.play();
+                setState(() {});
+              },
+            ),
+            Align(
+              alignment: Alignment.topLeft,
+              child: PopupMenuButton<Duration>(
+                initialValue: controller.value.captionOffset,
+                tooltip: 'Caption Offset',
+                onSelected: (Duration delay) {
+                  controller.seekTo(controller.value.position + delay);
+                },
+                itemBuilder: (BuildContext context) {
+                  return <PopupMenuItem<Duration>>[
+                    for (final Duration offsetDuration in seekOffsets)
+                      PopupMenuItem<Duration>(
+                        value: offsetDuration,
+                        child: Text('${offsetDuration.inSeconds}秒'),
+                      )
+                  ];
+                },
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(
+                    // Using less vertical padding as the text is also longer
+                    // horizontally, so it feels like it would need more spacing
+                    // horizontally (matching the aspect ratio of the video).
+                    vertical: 12,
+                    horizontal: 16,
+                  ),
+                  child: Text(
+                    '跳转',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ),
+            ),
+            Align(
+              alignment: Alignment.topRight,
+              child: PopupMenuButton<double>(
+                initialValue: controller.value.playbackSpeed,
+                tooltip: 'Playback speed',
+                onSelected: (double speed) {
+                  controller.setPlaybackSpeed(speed);
+                  setState(() {});
+                },
+                itemBuilder: (BuildContext context) {
+                  return <PopupMenuItem<double>>[
+                    for (final double speed in playbackRates)
+                      PopupMenuItem<double>(
+                        value: speed,
+                        child: Text('${speed}x'),
+                      )
+                  ];
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    // Using less vertical padding as the text is also longer
+                    // horizontally, so it feels like it would need more spacing
+                    // horizontally (matching the aspect ratio of the video).
+                    vertical: 12,
+                    horizontal: 16,
+                  ),
+                  child: Text(
+                    '${controller.value.playbackSpeed}x',
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+              ),
+            ),
+            // IconButton(
+            //   icon: const Icon(
+            //     Icons.fullscreen,
+            //     color: Colors.white,
+            //   ),
+            //   onPressed: () {
+            //     eventBus.fire(ToggleSopFullScreen());
+            //   },
+            // ),
+          ],
+        ),
+      ],
     );
   }
 }
