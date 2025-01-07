@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:fs_widgets/widgets/stepper/fs_stepper.dart';
+import 'package:fs_widgets/fs_widgets.dart';
 
 void main() {
   runApp(const MainApp());
@@ -13,8 +13,6 @@ class MainApp extends StatefulWidget {
 }
 
 class _MainAppState extends State<MainApp> {
-  FsStepperController controller = FsStepperController();
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -46,8 +44,10 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         title: const Text('HomePage'),
       ),
-      body: const Center(
-        child: Text('测试'),
+      body: FsVideoPlayer(
+        src: FsVideoPlayerUrlSrc(
+          'http://192.168.0.8/file/okmes/esop-file/2024-10-22/603743931510789/video/603743931510789.mp4?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBcHBOYW1lIjoiT2tNZXMiLCJVc2VySWQiOjEyLCJUZW5hbnRJZCI6MSwiQWNjb3VudCI6InllaGFpbWluIiwiTmFtZSI6IuWPtua1t-awkSIsIklzU3VwZXJBZG1pbiI6ImZhbHNlIiwiaWF0IjoxNzM2MjM0MDkwLCJuYmYiOjE3MzYyMzQwOTAsImV4cCI6MTczNjgzODg5MCwiaXNzIjoiT2tNZXMtQmFja2VuZCIsImF1ZCI6Ik9rTWVzLUZyb250ZW5kIn0.FHwEZLCpprF1Mp4LOiVptga3IinuxBPmrA_5CrksJeg',
+        ),
       ),
     );
   }

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
 import 'fs_video_player_src.dart';
+import 'video_player_controls_overlay_ext.dart';
 
 typedef FsVideoPlayerOnError = void Function(String? error);
 
@@ -32,6 +33,8 @@ class _FsVideoPlayerState extends State<FsVideoPlayer> {
 
   bool showControls = false;
 
+  var _isLoading = false;
+
   @override
   void initState() {
     super.initState();
@@ -46,31 +49,32 @@ class _FsVideoPlayerState extends State<FsVideoPlayer> {
     }
 
     _controller.addListener(_handleListener);
-
     _controller.setLooping(false);
     _initializeVideoPlayerFuture = _controller.initialize();
     _controller.play();
   }
 
-  void _handleListener() {
-    /// 播放结束
-    final duration = _controller.value.duration;
-    final position = _controller.value.position;
-    if (duration != const Duration(seconds: 0)) {
-      if (position == duration) {
-        _controller.seekTo(const Duration(seconds: 0));
-        widget.onPlayOver?.call();
-      }
+  void _handleListener() async {
+    var c = _controller;
+
+    if (c.value.isCompleted && c.value.isLooping == false) {
+      await c.seekTo(const Duration(seconds: 0));
+      await c.pause();
+      setState(() {});
+      widget.onPlayOver?.call();
     }
 
-    /// 播放错误
-    final hasError = _controller.value.hasError;
-    final errorDescription = _controller.value.errorDescription;
-    if (hasError) {
-      widget.onError?.call(errorDescription);
+    if (c.value.isBuffering) {
+      // 视频正在缓冲，显示加载指示器
+      setState(() {
+        _isLoading = true;
+      });
+    } else {
+      // 视频缓冲完成，隐藏加载指示器
+      setState(() {
+        _isLoading = false;
+      });
     }
-
-    setState(() {});
   }
 
   @override
@@ -92,6 +96,7 @@ class _FsVideoPlayerState extends State<FsVideoPlayer> {
         const Icon(
           Icons.error_outline,
           size: 60,
+          color: Colors.white,
         ),
         const SizedBox(
           height: 8,
@@ -99,6 +104,9 @@ class _FsVideoPlayerState extends State<FsVideoPlayer> {
         Text(
           '视频播放器加载出错了\n${snapshot.error}',
           textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Colors.white,
+          ),
         ),
       ],
     ));
@@ -114,11 +122,11 @@ class _FsVideoPlayerState extends State<FsVideoPlayer> {
       child: Stack(
         alignment: Alignment.bottomCenter,
         children: <Widget>[
-          VideoPlayer(_controller),
-          if (showControls)
-            VideoPlayerControlsOverlay(
-              controller: _controller,
-            ),
+          VideoPlayerControlsOverlayExt(
+            controller: _controller,
+            child: VideoPlayer(_controller),
+          ),
+          if (_isLoading) const Center(child: CircularProgressIndicator()),
         ],
       ),
     );
@@ -137,198 +145,16 @@ class _FsVideoPlayerState extends State<FsVideoPlayer> {
         } else {
           child = _buildVideo();
         }
-        return Center(
-          child: AspectRatio(
-            aspectRatio: _controller.value.aspectRatio,
-            child: child,
+        return Container(
+          color: Colors.black,
+          child: Center(
+            child: AspectRatio(
+              aspectRatio: _controller.value.aspectRatio,
+              child: child,
+            ),
           ),
         );
       },
-    );
-  }
-}
-
-class VideoPlayerControlsOverlay extends StatefulWidget {
-  final VideoPlayerController controller;
-
-  const VideoPlayerControlsOverlay({super.key, required this.controller});
-
-  @override
-  State<VideoPlayerControlsOverlay> createState() =>
-      _VideoPlayerControlsOverlayState();
-}
-
-class _VideoPlayerControlsOverlayState
-    extends State<VideoPlayerControlsOverlay> {
-  static const List<Duration> seekOffsets = <Duration>[
-    Duration(seconds: -15),
-    Duration(seconds: -10),
-    Duration(seconds: -5),
-    Duration.zero,
-    Duration(seconds: 5),
-    Duration(seconds: 10),
-    Duration(seconds: 15),
-  ];
-  static const List<double> playbackRates = <double>[
-    1.0,
-    2.0,
-  ];
-
-  bool showControls = false;
-
-  @override
-  Widget build(BuildContext context) {
-    var controller = widget.controller;
-
-    return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints constraints) {
-        var maxWidth = constraints.maxWidth;
-        return Stack(
-          alignment: Alignment.center,
-          children: <Widget>[
-            Center(
-              child: GestureDetector(
-                onTap: () {
-                  setState(() {
-                    showControls = !showControls;
-                  });
-                },
-                onDoubleTap: () {},
-              ),
-            ),
-            showControls
-                ? Positioned(
-                    bottom: 0,
-                    child: Container(
-                      width: maxWidth * 0.9,
-                      height: 100,
-                      margin: const EdgeInsets.only(bottom: 16),
-                      padding: const EdgeInsets.all(8.0),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.5),
-                        borderRadius:
-                            const BorderRadius.all(Radius.circular(8.0)),
-                      ),
-                      child: _buildControls(context, controller),
-                    ),
-                  )
-                : Container(),
-          ],
-        );
-      },
-    );
-  }
-
-  Column _buildControls(
-      BuildContext context, VideoPlayerController controller) {
-    return Column(
-      children: [
-        SizedBox(
-            height: 25,
-            child: VideoProgressIndicator(widget.controller,
-                allowScrubbing: true)),
-        const SizedBox(
-          height: 8,
-        ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            IconButton(
-              icon: widget.controller.value.isPlaying
-                  ? const Icon(
-                      Icons.pause,
-                      color: Colors.white,
-                      semanticLabel: 'Pause',
-                    )
-                  : const Icon(
-                      Icons.play_arrow,
-                      color: Colors.white,
-                      semanticLabel: 'Play',
-                    ),
-              onPressed: () {
-                widget.controller.value.isPlaying
-                    ? widget.controller.pause()
-                    : widget.controller.play();
-                setState(() {});
-              },
-            ),
-            Align(
-              alignment: Alignment.topLeft,
-              child: PopupMenuButton<Duration>(
-                initialValue: controller.value.captionOffset,
-                tooltip: 'Caption Offset',
-                onSelected: (Duration delay) {
-                  controller.seekTo(controller.value.position + delay);
-                },
-                itemBuilder: (BuildContext context) {
-                  return <PopupMenuItem<Duration>>[
-                    for (final Duration offsetDuration in seekOffsets)
-                      PopupMenuItem<Duration>(
-                        value: offsetDuration,
-                        child: Text('${offsetDuration.inSeconds}秒'),
-                      )
-                  ];
-                },
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(
-                    // Using less vertical padding as the text is also longer
-                    // horizontally, so it feels like it would need more spacing
-                    // horizontally (matching the aspect ratio of the video).
-                    vertical: 12,
-                    horizontal: 16,
-                  ),
-                  child: Text(
-                    '跳转',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-              ),
-            ),
-            Align(
-              alignment: Alignment.topRight,
-              child: PopupMenuButton<double>(
-                initialValue: controller.value.playbackSpeed,
-                tooltip: 'Playback speed',
-                onSelected: (double speed) {
-                  controller.setPlaybackSpeed(speed);
-                  setState(() {});
-                },
-                itemBuilder: (BuildContext context) {
-                  return <PopupMenuItem<double>>[
-                    for (final double speed in playbackRates)
-                      PopupMenuItem<double>(
-                        value: speed,
-                        child: Text('${speed}x'),
-                      )
-                  ];
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    // Using less vertical padding as the text is also longer
-                    // horizontally, so it feels like it would need more spacing
-                    // horizontally (matching the aspect ratio of the video).
-                    vertical: 12,
-                    horizontal: 16,
-                  ),
-                  child: Text(
-                    '${controller.value.playbackSpeed}x',
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                ),
-              ),
-            ),
-            // IconButton(
-            //   icon: const Icon(
-            //     Icons.fullscreen,
-            //     color: Colors.white,
-            //   ),
-            //   onPressed: () {
-            //     eventBus.fire(ToggleSopFullScreen());
-            //   },
-            // ),
-          ],
-        ),
-      ],
     );
   }
 }
