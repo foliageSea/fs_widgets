@@ -4,7 +4,7 @@ version: 0.0.1
 
 environment:
   sdk: '>=3.0.5 <4.0.0'
-  flutter: ">=1.17.0"
+  flutter: ">=3.10.5"
 
 dependencies:
   cached_network_image: ^3.3.1
