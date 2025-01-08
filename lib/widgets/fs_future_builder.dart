@@ -1,32 +1,26 @@
+import 'dart:io';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 class FsFutureBuilder<T> extends StatefulWidget {
   const FsFutureBuilder({
     super.key,
-    required this.future,
+    this.future,
     required this.build,
   });
 
-  final Future<T> Function() future;
+  final Future<T>? future;
   final Function(BuildContext context, T data) build;
 
   @override
-  State<FsFutureBuilder> createState() => _FsFutureBuilderState<T>();
+  State<FsFutureBuilder> createState() => FsFutureBuilderState<T>();
 }
 
-class _FsFutureBuilderState<T> extends State<FsFutureBuilder<T>> {
-  late Future<T> Function() _future;
-
-  @override
-  void initState() {
-    super.initState();
-    _future = widget.future;
-  }
-
+class FsFutureBuilderState<T> extends State<FsFutureBuilder<T>> {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<T>(
-      future: _future(),
+      future: widget.future,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return _buildProgress();
@@ -35,9 +29,8 @@ class _FsFutureBuilderState<T> extends State<FsFutureBuilder<T>> {
         if (snapshot.hasError) {
           if (snapshot.error is FsFutureBuilderDataEmptyError) {
             final err = snapshot.error as FsFutureBuilderDataEmptyError;
-            return err.emptyWidget ?? Text(err.msg);
+            return _buildEmpty(err);
           }
-
           return _buildError();
         }
 
@@ -48,15 +41,41 @@ class _FsFutureBuilderState<T> extends State<FsFutureBuilder<T>> {
     );
   }
 
-  Widget _buildProgress() => const Center(child: CircularProgressIndicator());
+  Widget _buildEmpty(FsFutureBuilderDataEmptyError err) {
+    if (err.emptyWidget != null) {
+      return Center(child: err.emptyWidget!);
+    }
+
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.error_outline,
+            size: 60,
+          ),
+          const SizedBox(
+            height: 8,
+          ),
+          Text(err.msg),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProgress() {
+    if (Platform.isAndroid) {
+      return const Center(child: CircularProgressIndicator());
+    } else if (Platform.isIOS) {
+      return const Center(child: CupertinoActivityIndicator());
+    } else {
+      return const Center(child: CircularProgressIndicator());
+    }
+  }
 
   Widget _buildError() {
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _future = widget.future;
-        });
-      },
+      onTap: () {},
       child: const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -68,7 +87,7 @@ class _FsFutureBuilderState<T> extends State<FsFutureBuilder<T>> {
             SizedBox(
               height: 8,
             ),
-            Text('加载出错了, 点击重试'),
+            Text('加载出错了'),
           ],
         ),
       ),
@@ -79,5 +98,5 @@ class _FsFutureBuilderState<T> extends State<FsFutureBuilder<T>> {
 class FsFutureBuilderDataEmptyError extends Error {
   final String msg;
   final Widget? emptyWidget;
-  FsFutureBuilderDataEmptyError({this.msg = '暂无', this.emptyWidget});
+  FsFutureBuilderDataEmptyError({this.msg = '暂无数据', this.emptyWidget});
 }
